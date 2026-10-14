@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pila interactiva</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .queue-list {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+    }
+    .queue-list > li {
+      flex: 0 0 auto;
+    }
+  </style>
+</head>
+<body class="bg-body-tertiary">
+<main class="container-lg py-4">
+
+  <header class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="fs-2 fw-semibold mb-1">Pila interactiva</h1>
+      <p class="text-secondary mb-0">Apila números, nombres o fotos. El último en entrar es el primero en salir.</p>
+    </div>
+    <button id="btn-tema" class="btn btn-outline-secondary btn-sm text-nowrap" type="button">Modo oscuro</button>
+  </header>
+
+  <div id="alerta" role="status" aria-live="polite"></div>
+
+  <div class="row g-4">
+    <!-- Columna izquierda: controles -->
+    <div class="col-lg-5">
+
+      <section class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h2 class="fs-5 fw-semibold">1. Define el tamaño</h2>
+          <form id="form-capacidad" class="input-group">
+            <input id="capacidad" type="number" min="1" max="50" class="form-control" placeholder="Ej. 5" aria-label="Tamaño de la pila" required>
+            <button class="btn btn-primary" type="submit">Crear pila</button>
+          </form>
+          <div class="form-text">Entre 1 y 50. Crear una pila nueva borra la anterior y sus fotos.</div>
+        </div>
+      </section>
+
+      <section class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h2 class="fs-5 fw-semibold">2. Apila datos</h2>
+          <form id="form-push" class="input-group">
+            <input id="valor" type="text" class="form-control" placeholder="Ej. 15, Ana, 3.5" aria-label="Valores a apilar" autocomplete="off" required>
+            <button id="btn-push" class="btn btn-success" type="submit">Apilar</button>
+          </form>
+          <div class="form-text mb-3">Escribe un valor o varios separados por comas.</div>
+          <div class="row row-cols-2 g-2">
+            <div class="col"><button id="btn-pop" class="btn btn-outline-danger w-100" type="button">Desapilar</button></div>
+            <div class="col"><button id="btn-peek" class="btn btn-outline-primary w-100" type="button">Ver tope</button></div>
+            <div class="col"><button id="btn-dup" class="btn btn-outline-secondary w-100" type="button">Duplicar tope</button></div>
+            <div class="col"><button id="btn-rev" class="btn btn-outline-secondary w-100" type="button">Invertir</button></div>
+            <div class="col-12"><button id="btn-clear" class="btn btn-outline-dark w-100" type="button">Vaciar pila</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h2 class="fs-5 fw-semibold">3. Apila fotos</h2>
+          <div id="camara-vacia" class="text-center text-body-tertiary border rounded py-5 mb-3">La cámara está apagada.</div>
+          <video id="video" class="w-100 rounded mb-3 d-none" autoplay playsinline muted></video>
+          <div class="d-grid gap-2">
+            <button id="btn-camara" class="btn btn-outline-primary" type="button">Encender cámara</button>
+            <div class="row row-cols-2 g-2">
+              <div class="col"><button id="btn-foto" class="btn btn-success w-100" type="button" disabled>Tomar foto</button></div>
+              <div class="col"><button id="btn-timer" class="btn btn-outline-success w-100" type="button" disabled>Foto en 3 s</button></div>
+            </div>
+          </div>
+          <label class="form-label small mt-3 mb-1" for="archivo">O sube una imagen (en el celular también puedes tomarla)</label>
+          <input id="archivo" type="file" class="form-control" accept="image/*" disabled>
+          <div class="form-text">Después de tomar o subir una foto, elige guardarla en la pila, la cola o ambas.</div>
+        </div>
+      </section>
+
+      <section class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="fs-5 fw-semibold">Buscar un valor</h2>
+          <form id="form-buscar" class="input-group">
+            <input id="valor-buscar" type="text" class="form-control" placeholder="Ej. Ana o Foto 2" aria-label="Valor a buscar" autocomplete="off" required>
+            <button id="btn-buscar" class="btn btn-warning" type="submit">Buscar</button>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <!-- Columna derecha: estado, historial y verificador -->
+    <div class="col-lg-7">
+
+      <section class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2 class="fs-5 fw-semibold mb-0">Estado de la pila</h2>
+          <span id="contador" class="badge text-bg-secondary">0 / 0</span>
+        </div>
+        <div class="card-body pb-2">
+          <div class="progress mb-3" role="progressbar" aria-label="Ocupación de la pila" aria-valuemin="0" aria-valuemax="100">
+            <div id="barra" class="progress-bar bg-success"></div>
+          </div>
+          <div class="row text-center">
+            <div class="col"><div class="text-secondary small">Elementos</div><div id="st-elem" class="fs-5 fw-semibold">0</div></div>
+            <div class="col"><div class="text-secondary small">Libres</div><div id="st-libres" class="fs-5 fw-semibold">0</div></div>
+            <div class="col"><div class="text-secondary small">Tope</div><div id="st-tope" class="fs-5 fw-semibold">—</div></div>
+          </div>
+        </div>
+        <ul id="pila" class="list-group list-group-flush text-center overflow-auto"></ul>
+      </section>
+
+      <section class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2 class="fs-5 fw-semibold mb-0">Cola FIFO</h2>
+          <span id="cola-contador" class="badge text-bg-secondary">0 elementos</span>
+        </div>
+        <div class="card-body">
+          <p class="text-secondary">El primero en entrar es el primero en salir. Los elementos se muestran de izquierda a derecha.</p>
+          <form id="form-encolar" class="input-group mb-3">
+            <input id="valor-cola" type="text" class="form-control" placeholder="Ej. 15, Ana, 3.5" aria-label="Valores a encolar" autocomplete="off" required>
+            <button id="btn-encolar" class="btn btn-success" type="submit">Encolar</button>
+          </form>
+          <div class="row g-2 mb-3">
+            <div class="col"><button id="btn-desencolar" class="btn btn-outline-danger w-100" type="button" disabled>Desencolar</button></div>
+            <div class="col"><button id="btn-frente-cola" class="btn btn-outline-primary w-100" type="button" disabled>Ver frente</button></div>
+          </div>
+          <ul id="cola" class="list-group text-center queue-list"></ul>
+        </div>
+      </section>
+
+      <section class="card shadow-sm">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-historial" type="button" role="tab">Historial</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-balance" type="button" role="tab">Verificador de paréntesis</button>
+            </li>
+          </ul>
+        </div>
+        <div class="card-body">
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-historial" role="tabpanel">
+              <ul id="historial" class="list-group list-group-flush small"></ul>
+            </div>
+            <div class="tab-pane fade" id="tab-balance" role="tabpanel">
+              <p class="text-secondary">Comprueba que los paréntesis (), corchetes [] y llaves {} estén bien cerrados. Es una aplicación clásica de las pilas.</p>
+              <form id="form-balance" class="input-group">
+                <input id="texto-balance" type="text" class="form-control" placeholder="Ej. (a + b) * [c - {d / e}]" aria-label="Expresión a verificar" autocomplete="off" required>
+                <button class="btn btn-primary" type="submit">Verificar</button>
+              </form>
+              <div id="resultado-balance" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Ventana para ver una foto en grande -->
+<div class="modal fade" id="modal-foto" tabindex="-1" aria-labelledby="modal-titulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="modal-titulo"></h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modal-img" class="img-fluid rounded" alt="">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-destino-foto" tabindex="-1" aria-labelledby="destino-foto-titulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="destino-foto-titulo">¿Dónde quieres guardar la foto?</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancelar"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="preview-foto" class="img-fluid rounded mb-3" alt="Vista previa de la foto">
+        <div class="d-grid gap-2">
+          <button id="guardar-foto-pila" class="btn btn-primary" type="button">En la pila</button>
+          <button id="guardar-foto-cola" class="btn btn-success" type="button">En la cola</button>
+          <button id="guardar-foto-ambos" class="btn btn-outline-primary" type="button">En ambas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
